@@ -10,8 +10,12 @@ import time
 import pandas as pd
 import os
 import credenciales
+import unittest
+import HtmlTestRunner
+import datetime
 
 os.chdir('G:\Mi unidad\Data\Copa\Validacion facturas')
+now = datetime.datetime.now()
 
 driver = webdriver.Chrome("C:\Python\Python37\chromedriver")
 tabla_facturas = pd.DataFrame(columns=['Supplier'], index = [0])
@@ -21,10 +25,9 @@ with open("Columnas Copa.txt") as reader:
         a =  str(line).replace('\n','')
         tabla_facturas[a] = ""
         comparacion[a] = ""
-tabla_facturas = pd.DataFrame(columns = ['Supplier',	'Invoice #',	'Invoice Date',	'Currency',	'Date of Invoice Received',	'Key reference for SAP',	'From',	'To',	'Line #',	'Description',	'Price',	'Total tax (Header)',	'Contract',	'Total invoice ',	'Attachments',], index = [0])
-tabla_url = pd.DataFrame(columns = ['url'], index = [0])
 
 insumo_UAT = pd.read_excel('Insumo UAT.xlsx', header = 0)
+testRunner_1=HtmlTestRunner.HTMLTestRunner(output="html_report_dir")
 
 def funcion_uno():
     ###Inicio de sesion
@@ -47,9 +50,9 @@ def funcion_uno():
     time.sleep(2)
     # Aca comenzaría el ciclo
     cuadro = driver.find_element_by_id('sf_invoice_line')
-    ix_output = 0
-    for x in range(0,len(insumo_UAT)):
-        item = insumo_UAT.loc[x,'Invoice #']
+
+    for ix_output in range(0,len(insumo_UAT)):
+        item = insumo_UAT.loc[ix_output,'Invoice #']
         try:
             cuadro.clear()
         except:
@@ -58,6 +61,7 @@ def funcion_uno():
             cuadro.clear()
         cuadro.send_keys(item)
         cuadro.send_keys(Keys.ENTER)
+        time.sleep(2)
         prueba = 1
         encontrar = False
         tbody = driver.find_element_by_id('invoice_line_tbody')
@@ -69,6 +73,7 @@ def funcion_uno():
                 prueba = prueba + 1
             else:
                 if tds[1].text == item:
+                    screenshot_1 = False
                     try:
                         tabla_facturas.loc[ix_output,'Supplier'] = tds[0].text
                         tabla_facturas.loc[ix_output,'Invoice #'] =tds[1].text
@@ -83,6 +88,13 @@ def funcion_uno():
                         tabla_facturas.loc[ix_output,'Price'] =tds[10].text
                         tabla_facturas.loc[ix_output,'Total tax (Header)'] =tds[11].text
                         tabla_facturas.loc[ix_output,'Contract'] =tds[12].text
+                        for z in list(insumo_UAT.columns)[:-2]:
+                            if tabla_facturas.loc[ix_output,z] != insumo_UAT.loc[ix_output,z]:
+                                screenshot_1 = True
+                        
+                        if screenshot_1:
+                            driver.save_screenshot('Screenshots/Invoice_' + tabla_facturas.loc[ix_output,'Invoice #'] +"_1_" + str(now).replace(" ","_").replace(':','-')[0:19] + ".png")
+                            screenshot_1 = False
                     except:
                         time.sleep(3)
                         tabla_facturas.loc[ix_output,'Supplier'] = tds[0].text
@@ -98,6 +110,14 @@ def funcion_uno():
                         tabla_facturas.loc[ix_output,'Price'] =tds[10].text
                         tabla_facturas.loc[ix_output,'Total tax (Header)'] =tds[11].text
                         tabla_facturas.loc[ix_output,'Contract'] =tds[12].text
+                        for z in list(insumo_UAT.columns)[:-2]:
+                            if tabla_facturas.loc[ix_output,z] != insumo_UAT.loc[ix_output,z]:
+                                screenshot_1 = True
+                        
+                        if screenshot_1:
+                            driver.save_screenshot('Screenshots/Invoice_' + tabla_facturas.loc[ix_output,'Invoice #'] +"_1_" + str(now).replace(" ","_").replace(':','-')[0:19] + ".png")
+                            screenshot_1 = False
+
                     url = tds[1].find_element_by_tag_name('a').get_attribute('href')
                     driver.get(url)
                     time.sleep(3)
@@ -109,7 +129,16 @@ def funcion_uno():
                             line = line + ata.text + ";"
                     line = line[:-1]
                     tabla_facturas.loc[ix_output,'Attachments'] = line
-                    tabla_facturas.loc[ix_output,'Total invoice '] = driver.find_element_by_id('totalWithTaxes').text
+                    tabla_facturas.loc[ix_output,'Total invoice'] = driver.find_element_by_id('totalWithTaxes').text
+                    screenshot_2 = False
+                    for z in ['Attachments','Total invoice']:
+                            if tabla_facturas.loc[ix_output,z] != insumo_UAT.loc[ix_output,z]:
+                                screenshot_2 = True
+                        
+                    if screenshot_2:
+                        driver.save_screenshot('Screenshots/Invoice_' + tabla_facturas.loc[ix_output,'Invoice #'] +"_2_" + str(now).replace(" ","_").replace(':','-')[0:19] + ".png")
+                        screenshot_2 = False
+
                     driver.find_element_by_link_text('Invoice Lines').click()
                     encontrar = True
                     ix_output = ix_output + 1
@@ -119,57 +148,16 @@ def funcion_uno():
                     prueba = prueba + 1
         if not encontrar:
             print('No se encontro el item %s'.format(item))
-    row_f, col_f = tabla_facturas.shape
-    for x in range(0,row_f):
-        comparacion.loc[x] = ''
-        for y in range(0,col_f):
-            if str(tabla_facturas.iloc[x,y]).strip() == str(insumo_UAT.iloc[x,y]).strip():
-                comparacion.iloc[x,y] = 'OK'
-            else:
-                comparacion.iloc[x,y] = str(insumo_UAT.iloc[x,y]) + "-" + str(tabla_facturas.iloc[x,y])
-    tabla_facturas.to_excel('Output Facturas.xlsx',header = True, encoding = 'utf-8', index=None)
-    comparacion.to_excel('Resultado Comparacion.xlsx',header = True, encoding = 'utf-8', index=None)
+    driver.close()
 
-
-    '''contiene = driver.find_element_by_xpath('//*[@id="invoice_header_adv_cond_w"]/div/div/select')
-    contiene.send_keys('creado')
-    time.sleep(3)
-    id1 = 'conditions_' + str(contiene.get_attribute('id')).split('_')[1].strip() + '_created_by'
-    driver.find_element_by_id(id1).send_keys('PIF')
-    driver.find_element_by_xpath('//*[@class="table_condition_button"]/a[2]/img').click()
-    time.sleep(1)
-    contiene2 = driver.find_element_by_xpath('//*[@id="invoice_header_adv_cond_w"]/div/div[2]/select')
-    contiene2.send_keys('Estad')
-    time.sleep(3)
-    driver.find_element_by_xpath('//*[@class="condition_clause"]/select/option[11]').click()
-    driver.find_element_by_id('search_advanced_button_invoice_header').click()
-    time.sleep(2)
-    i=0
-    for t in range(3):
-        tbody = driver.find_element_by_id('invoice_header_tbody')
-        rows = tbody.find_elements_by_tag_name('tr')
-        for row in rows:
-            link = row.find_element_by_tag_name("td").find_element_by_tag_name("a").get_attribute("href")
-            tabla_url.loc[i,'url'] = link
-            i=i+1
-        try:
-            driver.find_element_by_link_text("Siguiente").click()
-        except:
-            print ("Se obtuvieron todas las url")
-            break
-    
-    for i in range(len(tabla_url)):
-        driver.get(tabla_url.loc[i,'url'])
-        wait.until(EC.element_to_be_clickable((By.ID, 'add_comment_link')))
-        tabla_facturas.loc[i,'N de factura'] = driver.find_element_by_id('invoice_invoice_number').text
-        tabla_facturas.loc[i,'Desde'] = driver.find_element_by_xpath('//*[@id="topHalf"]/div[1]/div[26]/time').text
-        tabla_facturas.loc[i,'Hasta'] = driver.find_element_by_xpath('//*[@id="topHalf"]/div[1]/div[27]/time').text
-        tabla_facturas.loc[i,'Suma Extended Price'] = driver.find_element_by_id('invoice_amount_line_price').text
-        tabla_facturas.loc[i,'Impuestos'] = driver.find_element_by_xpath('//*[@class="tax_section"]/span[2]/span[3]/div/span').text
-    
-    tabla_facturas.to_excel('Resultado facturas.xlsx', header = True, index = None, encoding = 'utf-8')
-    print ('Exportacion exitosa. Fin de la validacion')
-    driver.close()'''
+class Pruebas_Facturas(unittest.TestCase):
+    def test_valores(self):
+        for y in range(0,len(insumo_UAT)):
+            for x in list(insumo_UAT.columns):
+                nombre = str(insumo_UAT.loc[y,'Invoice #']) + " - " + str(x)
+                with self.subTest(Invoice = nombre):
+                    self.assertEqual(str(insumo_UAT.loc[y,x]),str(tabla_facturas.loc[y,x]))
 
 if __name__ == "__main__":
     funcion_uno()
+    unittest.main(testRunner=testRunner_1)
