@@ -1,0 +1,8 @@
+field_supplier
+field_name
+field_number
+field_version
+field_status
+field_owner
+field_currency
+content_group_selector
