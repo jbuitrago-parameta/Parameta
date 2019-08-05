@@ -14,21 +14,6 @@ import unittest
 import HtmlTestRunner
 import datetime
 
-os.chdir('G:\Mi unidad\Data\Copa\Validacion facturas')
-now = datetime.datetime.now()
-
-driver = webdriver.Chrome("C:\Python\Python37\chromedriver")
-tabla_facturas = pd.DataFrame(columns=['Supplier'], index = [0])
-comparacion = pd.DataFrame(columns=['Supplier'], index = [0])
-with open("Columnas Copa.txt") as reader:
-    for line in reader:
-        a =  str(line).replace('\n','')
-        tabla_facturas[a] = ""
-        comparacion[a] = ""
-
-insumo_UAT = pd.read_excel('Insumo UAT.xlsx', header = 0)
-testRunner_1=HtmlTestRunner.HTMLTestRunner(output="html_report_dir")
-
 def funcion_uno():
     ###Inicio de sesion
     driver.get('https://copaair-test.coupahost.com/sessions/support_login')
@@ -150,14 +135,38 @@ def funcion_uno():
             print('No se encontro el item %s'.format(item))
     driver.close()
 
-class Pruebas_Facturas(unittest.TestCase):
-    def test_valores(self):
-        for y in range(0,len(insumo_UAT)):
-            for x in list(insumo_UAT.columns):
-                nombre = str(insumo_UAT.loc[y,'Invoice #']) + " - " + str(x)
-                with self.subTest(Invoice = nombre):
-                    self.assertEqual(str(insumo_UAT.loc[y,x]),str(tabla_facturas.loc[y,x]))
+class TestSequense(unittest.TestCase):
+    pass
+
+
+def test_generator(a):
+    def test(self):
+        for x in list(insumo_UAT.columns):
+            nombre = str(x)
+            with self.subTest(Field = nombre):
+                self.assertEqual(str(insumo_UAT.loc[a,x]),str(tabla_facturas.loc[a,x]))
+    return test
 
 if __name__ == "__main__":
+    os.chdir('G:\Mi unidad\Data\Copa\Validacion facturas')
+    now = datetime.datetime.now()
+
+    driver = webdriver.Chrome("C:\Python\Python37\chromedriver")
+    tabla_facturas = pd.DataFrame(columns=['Supplier'], index = [0])
+    comparacion = pd.DataFrame(columns=['Supplier'], index = [0])
+    with open("Columnas Copa.txt") as reader:
+        for line in reader:
+            a =  str(line).replace('\n','')
+            tabla_facturas[a] = ""
+            comparacion[a] = ""
+
+    insumo_UAT = pd.read_excel('Insumo UAT.xlsx', header = 0)
+    testRunner_1=HtmlTestRunner.HTMLTestRunner(output="html_report_dir")
     funcion_uno()
+    a,b = insumo_UAT.shape
+    for x in range(a):
+        test_name = 'test_Invoice # ' + str(insumo_UAT.loc[x,'Invoice #'])
+        test_to_run = test_generator(x)
+        setattr(TestSequense, test_name, test_to_run)
     unittest.main(testRunner=testRunner_1)
+
